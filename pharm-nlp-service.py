@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 tokenizer = T5Tokenizer.from_pretrained(MODEL_PATH)
-model = T5ForConditionalGeneration.from_pretrained(MODEL_PATH).to(device)
+model = T5ForConditionalGeneration.from_pretrained(MODEL_PATH,  cache_dir=".").to(device)
 logging.info("Модель и токенизатор загружены")
 
 class ProductRequest(BaseModel):
