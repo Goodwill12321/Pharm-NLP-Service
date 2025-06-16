@@ -13,7 +13,8 @@ logging.basicConfig(
 
 app = FastAPI()
 
-MODEL_PATH = "./t5-med-ner"  # Укажите путь к вашей модели
+#MODEL_PATH = "./t5-med-ner"  # Укажите путь к вашей модели
+MODEL_PATH = "Goodwill333/T5-NER-Pharm-RU"
 
 # Загрузка модели и токенизатора при старте
 logging.info("Загрузка модели и токенизатора...")
