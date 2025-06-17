@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from cache_nlp_results import PharmaNameCache
 import logging
 import time
 from transformers import T5Tokenizer, T5ForConditionalGeneration
@@ -49,13 +50,52 @@ def predict(product: str) -> str:
     print(message2)
     return decoded.replace("\n", " ").strip()
 
+
 @app.post("/predict")
 async def predict_endpoint(request: ProductRequest):
-    result = predict(request.product)
+    result = service.process_name(request.product)
     return {"result": result}
+
+
+
+
+# Основной сервис с кэшем
+class PharmaNameService:
+    def __init__(self):
+        self.cache = PharmaNameCache()
+
+    def process_name(self, name):
+        # Сначала пытаемся получить результат из кэша
+        cached_result = self.cache.query_cache(name)
+        if cached_result is not None:
+            print(f"Используем кэш для: {name}")
+            return cached_result
+        
+        # Если нет подходящего кэша — вызываем модель T5
+        print(f"Обрабатываем моделью T5: {name}")
+        result = predict(name)
+        
+        # Добавляем результат в кэш
+        self.cache.add_to_cache(name, result)
+        return result
+
+
+
 
 
 import uvicorn
 
 if __name__ == "__main__":
-    uvicorn.run("pharm-nlp-service:app", host="127.0.0.1", port=8000, reload=True)
+    service = PharmaNameService()
+    names = [
+        "Парацетамол 500мг",
+        "Парацетамол 650мг",
+        "Ибупрофен 200мг",
+        "Парацетамол 500мг таблетки"
+    ]
+    
+    for n in names:
+        parts = service.process_name(n)
+        print(parts)
+
+    uvicorn.run("pharm_nlp_service:app", host="127.0.0.1", port=8000, reload=True)
