@@ -2,3 +2,5 @@ transformers[torch]
 sentencepiece
 fastapi
 uvicorn
+faiss
+sentence_transformers

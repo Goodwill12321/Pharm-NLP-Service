@@ -1,0 +1,9 @@
+/.venv/
+data/
+t5-med-ner/
+*.pyc
+*.json
+*.7z
+*.log
+/models--Goodwill333--T5-NER-Pharm-RU/
+*.index

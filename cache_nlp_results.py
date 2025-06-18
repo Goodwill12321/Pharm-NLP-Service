@@ -6,13 +6,24 @@ import time
 import json
 import os
 
+import re
+
+def extract_numbers(text):
+    # Извлекает все числа (целые и дробные) из строки
+    return re.findall(r'\d+(\.\d+)?', text)
+
+
 class PharmaNameCache:
     def __init__(self, embedding_model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', dim=384,
                  index_path="faiss.index", data_path="cache_data.json", autosave_interval=300):
         """
         autosave_interval - период автосохранения в секундах (например, 300 = 5 минут)
         """
+        
+        #os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"  # Use a mirror
+
         self.embedder = SentenceTransformer(embedding_model_name)
+        #self.embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         self.dim = dim
         self.index_path = index_path
         self.data_path = data_path

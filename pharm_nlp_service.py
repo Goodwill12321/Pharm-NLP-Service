@@ -64,7 +64,7 @@ def predict(product: str) -> str:
 
 class PharmaNameService:
     def __init__(self):
-        self.cache = PharmaNameCache(autosave_interval=AUTOSAVE_INTERVAL)
+        self.cache = PharmaNameCache(embedding_model_name="./all-MiniLM-L6-v2", autosave_interval=AUTOSAVE_INTERVAL)
 
     def process_name(self, name):
         cached_result = self.cache.query_cache(name)
