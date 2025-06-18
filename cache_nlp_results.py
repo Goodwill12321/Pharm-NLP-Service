@@ -9,8 +9,8 @@ import os
 import re
 
 def extract_numbers(text):
-    # Извлекает все числа (целые и дробные) из строки
-    return re.findall(r'\d+(\.\d+)?', text)
+    pattern = r'\d+(?:\.\d+)?'
+    return re.findall(pattern, text)
 
 
 class PharmaNameCache:
@@ -54,17 +54,26 @@ class PharmaNameCache:
         self.data.append({'name': name, 'parsed': parsed_parts, 'embedding': emb.tolist()})
         self.embeddings.append(emb)
 
-    def query_cache(self, name, top_k=3, similarity_threshold=0.7):
+    def query_cache(self, name, top_k=3, similarity_threshold=0.8):
         emb = self.embedder.encode([name], normalize_embeddings=True)[0].astype('float32')
         if self.index.ntotal == 0:
             return None
         
         D, I = self.index.search(np.array([emb]), top_k)
+        query_numbers = extract_numbers(name)
+        
         for dist, idx in zip(D[0], I[0]):
             if dist >= similarity_threshold:
                 cached_entry = self.data[idx]
-                return cached_entry['parsed']
+                cached_numbers = extract_numbers(cached_entry['name'])
+                # Сравниваем числовые части
+                if query_numbers == cached_numbers:
+                    return cached_entry['parsed']
+                else:
+                    # Если числа отличаются, считаем, что это разные препараты
+                    continue
         return None
+
 
     def save(self):
         """Сохраняем индекс и кэш на диск"""
