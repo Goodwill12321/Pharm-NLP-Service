@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import logging
 import time
 import torch
@@ -7,8 +7,9 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration
 import json
 import signal
 import sys
-
+from typing import Dict, Optional
 from cache_nlp_results import PharmaNameCache  # модифицированный класс из шага 1
+from embedding_utils import EmbeddingComparator
 
 # Читаем настройки из файла config.json
 def load_config(path="config.json"):
@@ -61,11 +62,15 @@ def predict(product: str) -> str:
     print(message2)
     return decoded.replace("\n", " ").strip()
 
+
+comparator = EmbeddingComparator()
+
+
 class PharmaNameService:
     def __init__(self):
         #MODEL_PATH = "./all-MiniLM-L6-v2"
         MODEL_PATH = "./paraphrase-multilingual-MiniLM-L12-v2"
-        self.cache = PharmaNameCache(embedding_model_name=MODEL_PATH, autosave_interval=AUTOSAVE_INTERVAL)
+        self.cache = PharmaNameCache(comparator, autosave_interval=AUTOSAVE_INTERVAL)
 
     def process_name(self, name, use_cache=True, similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD):
         if use_cache:
@@ -82,12 +87,23 @@ class PharmaNameService:
 
 service = PharmaNameService()
 
-from pydantic import BaseModel, Field
 
 class ProductRequest(BaseModel):
     product: str
     use_cache: bool = Field(True, description="Использовать кэш")
     similarity_threshold: float = Field(DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0, description="Порог похожести для кэша")
+
+
+class ComparePartsRequest(BaseModel):
+    reference: Dict[str, str]  # эталонные части
+    test: Dict[str, str]       # тестируемые части
+
+class ComparePartsResponse(BaseModel):
+    similarities: Dict[str, float]  # поле -> коэффициент сходства (0..1)
+
+
+
+#################################################### HTTP methods #################################################################
 
 @app.post("/predict")
 async def predict_endpoint(request: ProductRequest):
@@ -97,6 +113,22 @@ async def predict_endpoint(request: ProductRequest):
         similarity_threshold=request.similarity_threshold
     )
     return result
+
+
+
+@app.post("/compare_parts", response_model=ComparePartsResponse)
+async def compare_parts(request: ComparePartsRequest):
+    similarities = {}
+    for field, ref_value in request.reference.items():
+        test_value = request.test.get(field, "")
+
+        sim = comparator.compare_fields(field, ref_value, test_value)
+        similarities[field] = round(sim, 4)
+
+    return ComparePartsResponse(similarities=similarities)
+
+#################################################### End of HTTP methods ############################################################
+
 
 def shutdown_handler(signum, frame):
     print("Завершение работы сервиса, сохраняем кэш...")
