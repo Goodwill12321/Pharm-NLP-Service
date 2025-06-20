@@ -7,3 +7,4 @@ t5-med-ner/
 *.log
 /models--Goodwill333--T5-NER-Pharm-RU/
 *.index
+/paraphrase-multilingual-MiniLM-L12-v2/
