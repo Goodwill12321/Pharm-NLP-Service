@@ -45,6 +45,8 @@ class EmbeddingComparator:
         return None
 
     def compare_fields(self, field_name: str, ref_value: str, test_value: str):
+        if ref_value == test_value:
+            return 1.0
         func = self.select_compare_function(field_name)
         if func:
             return func(ref_value, test_value)
@@ -56,3 +58,39 @@ class EmbeddingComparator:
     def extract_numbers(text):
         pattern = r'\d+(?:\.\d+)?'
         return re.findall(pattern, text)
+    
+
+    def compare_fields_batch(self, fields_values: list[tuple[str, str, str]]) -> dict:
+        """
+        fields_values: список кортежей (field_name, ref_value, test_value)
+        Возвращает dict: field_name -> similarity
+        """
+        similarities = {}
+        to_embed = []
+        embed_indices = []
+
+        # Сначала обрабатываем простые случаи и отбираем для эмбеддингов
+        for i, (field, ref_val, test_val) in enumerate(fields_values):
+            if ref_val == test_val:
+                similarities[field] = 1.0
+            else:
+                func = self.select_compare_function(field)
+                if func:
+                    similarities[field] = func(ref_val, test_val)
+                else:
+                    # Для универсального сравнения откладываем на эмбеддинг
+                    to_embed.append((field, ref_val, test_val))
+                    embed_indices.append(i)
+
+        if to_embed:
+            ref_texts = [item[1] for item in to_embed]
+            test_texts = [item[2] for item in to_embed]
+
+            ref_embs = self.embed(ref_texts)
+            test_embs = self.embed(test_texts)
+
+            for idx, (field, _, _) in enumerate(to_embed):
+                sim = self.cosine_similarity(ref_embs[idx], test_embs[idx])
+                similarities[field] = sim
+
+        return similarities

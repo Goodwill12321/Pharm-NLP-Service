@@ -4,7 +4,7 @@ import logging
 import json
 import signal
 import sys
-from typing import Dict, Optional
+from typing import Dict, List
 from embedding_utils import EmbeddingComparator
 from pharm_name_service import PharmaNameService
 
@@ -31,7 +31,7 @@ app = FastAPI()
 DEFAULT_SIMILARITY_THRESHOLD = 0.8
 
 #MODEL_PATH = "./all-MiniLM-L6-v2"
-MODEL_PATH_EMB = "./paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_PATH_EMB = "paraphrase-multilingual-MiniLM-L12-v2"
 comparator = EmbeddingComparator(MODEL_PATH_EMB)
 
 
@@ -58,6 +58,16 @@ class BatchProductRequest(BaseModel):
 
 
 
+
+class BatchComparePartsRequest(BaseModel):
+    items: List[ComparePartsRequest]
+
+
+class BatchComparePartsResponse(BaseModel):
+    results: List[ComparePartsResponse]
+
+
+
 #################################################### HTTP methods #################################################################
 
 @app.post("/predict")
@@ -69,7 +79,7 @@ async def predict_endpoint(request: ProductRequest):
     )
     return result
 
-@app.post("/batch_predict")
+@app.post("/predict_batch")
 async def batch_predict_endpoint(request: BatchProductRequest):
     result = service.process_names_batch(
         request.products, 
@@ -78,7 +88,7 @@ async def batch_predict_endpoint(request: BatchProductRequest):
     return result    
 
 
-@app.post("/compare_parts", response_model=ComparePartsResponse)
+""" @app.post("/compare_parts", response_model=ComparePartsResponse)
 async def compare_parts(request: ComparePartsRequest):
     similarities = {}
     for field, ref_value in request.reference.items():
@@ -87,7 +97,47 @@ async def compare_parts(request: ComparePartsRequest):
         sim = comparator.compare_fields(field, ref_value, test_value)
         similarities[field] = round(sim, 4)
 
+    return ComparePartsResponse(similarities=similarities) """
+
+
+@app.post("/compare_parts", response_model=ComparePartsResponse)
+async def compare_parts(request: ComparePartsRequest):
+    fields_values = [(field, request.reference.get(field, ""), request.test.get(field, "")) 
+                     for field in request.reference.keys()]
+    similarities = comparator.compare_fields_batch(fields_values)
+    similarities = {k: round(v, 4) for k, v in similarities.items()}
     return ComparePartsResponse(similarities=similarities)
+
+
+
+@app.post("/compare_parts_batch", response_model=BatchComparePartsResponse)
+async def batch_compare_parts(request: BatchComparePartsRequest):
+    results = []
+    # Обрабатываем каждый набор в пакете
+    for item in request.items:
+        fields_values = [(field, item.reference.get(field, ""), item.test.get(field, "")) 
+                     for field in item.reference.keys()]
+        similarities = comparator.compare_fields_batch(fields_values)
+        # Преобразуем в список с сохранением порядка (по reference.keys())
+        similarities = {k: round(v, 4) for k, v in similarities.items()}
+        results.append(ComparePartsResponse(similarities=similarities))
+    return BatchComparePartsResponse(results=results)
+
+
+
+""" from typing import List
+
+@app.post("/batch_compare_parts", response_model=List[ComparePartsResponse])
+async def batch_compare_parts(request: ComparePartsRequest):
+    fields_values = [(idx, field, request.reference.get(field, ""), request.test.get(field, "")) 
+                     for idx, field in enumerate(request.reference.keys())]
+    similarities_list = comparator.compare_fields_batch(fields_values)
+    
+    # Формируем массив словарей с полем и значением сходства
+    similarities = [{"field": field, "similarity": round(sim, 4)} for field, sim in similarities_list]
+
+    return {"similarities": similarities}
+ """
 
 #################################################### End of HTTP methods ############################################################
 

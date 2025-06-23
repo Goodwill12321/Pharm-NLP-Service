@@ -49,11 +49,10 @@ class PharmaNameService:
         input_texts = [
             "\n".join([
                 "Задание: Извлеки части из названия лекарственного препарата или товара фармацевтического назначения.",
-                f"Наименование товара: {product}"
+                f"Наименование товара перечисленыы ниже (в возвращаемом результате добавляй в json поле ТоварПоставки препарат, по которому было извлечение ): {product}"
             ])
             for product in products
         ]
-        
         inputs = self.tokenizer(
             input_texts, 
             padding=True, 
@@ -99,19 +98,26 @@ class PharmaNameService:
         return {"parsed": result, "cached_name": None, "from_cache": False, "similarity": None}
     
     def process_names_batch(self, products, use_cache=True, similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD):
+        uncached_indices = []
         uncached_products = []
-        cached_results = []
-        for product in products:
-            cached = self.cache.query_cache(product, similarity_threshold=similarity_threshold)
-            if cached is not None:
+        results = [None] * len(products)
+        for idx, product in enumerate(products):
+            if use_cache:
+                cached = self.cache.query_cache(product, similarity_threshold=similarity_threshold)
+            if use_cache and (cached is not None):
                 parsed, cached_name, dist = cached
-                cached_results.append({"parsed": parsed, "cached_name": cached_name, "from_cache": True, "similarity": float(dist)})
+                results[idx] ={"parsed": parsed, "cached_name": cached_name, "from_cache": True, "similarity": float(dist)}
             else:
+                uncached_indices.append(idx)
                 uncached_products.append(product)
         # Для всех не найденных в кэше — батчевое предсказание
         if uncached_products:
             batch_results = self.predict_batch(uncached_products)
-            for product, result in zip(uncached_products, batch_results):
+            for i, product, result in zip(uncached_indices, uncached_products, batch_results):
                 self.cache.add_to_cache(product, result)
-                cached_results.append({"parsed": result, "cached_name": None, "from_cache": False, "similarity": None})
-        return {"results": cached_results}
+                #cached_results.append({"parsed": result, "cached_name": None, "from_cache": False, "similarity": None})
+                results[i] = {"parsed": result, "cached_name": None, "from_cache": False, "similarity": None}
+        return {"results": results}
+    
+
+   
