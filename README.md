@@ -6,10 +6,10 @@ install python version less than 3.13 (sentencepiece library requeirments)
 Run pip
 pip install -r requirements.txt
 or
-python.exe -m pip install -r requirements.txt (for embedded version)
+"python.exe -m pip install -r requirements.txt" (for embedded version without docker)
 
 or 
-docker build -t pharm-nlp .
+"docker build -t pharm-nlp ."
 
 for running in docker 
 
