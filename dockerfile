@@ -10,4 +10,4 @@ RUN pip install --no-cache-dir -r requirements.txt uvicorn
 COPY pharm_nlp_service.py .
 
 # Запускаем приложение
-CMD ["uvicorn", "pharm-nlp-service:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "pharm_nlp_service:app", "--host", "0.0.0.0", "--port", "8000"]
