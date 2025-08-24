@@ -14,7 +14,7 @@ or
 for running in docker 
 
 Usage:
-py .\pharm-nlp-service.py 
+py .\pharm_nlp_service.py 
 
 or (for docker)
 
