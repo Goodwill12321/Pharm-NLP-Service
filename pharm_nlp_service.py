@@ -7,6 +7,7 @@ import sys
 from typing import Dict, List
 from embedding_utils import EmbeddingComparator
 from pharm_name_service import PharmaNameService
+import os
 
 # Читаем настройки из файла config.json
 def load_config(path="config.json"):
@@ -20,8 +21,12 @@ def load_config(path="config.json"):
 
 config = load_config()
 
+
+LOG_DIR = os.getenv("LOG_DIR", "/app/logs")
+LOG_FILE = os.path.join(LOG_DIR, "service.log")
+
 logging.basicConfig(
-    filename='service.log',
+    filename=LOG_FILE,
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
